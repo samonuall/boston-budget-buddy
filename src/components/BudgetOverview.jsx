@@ -3,26 +3,28 @@ import BudgetCard from './BudgetCard';
 import { CATEGORY_KEYS } from '../utils/constants';
 import { formatCurrency } from '../utils/taxCalculator';
 
-export default function BudgetOverview() {
+export default function BudgetOverview({ onCategoryClick, selectedCategory }) {
   const { categoryBudgets, spendingByCategory, getCategoryStatus, remainingTotal } = useBudget();
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-6">
         {CATEGORY_KEYS.map((key) => (
-          <BudgetCard 
+          <BudgetCard
             key={key}
             category={key}
             budget={categoryBudgets[key] || 0}
             spent={spendingByCategory[key] || 0}
             status={getCategoryStatus(key)}
+            onClick={onCategoryClick}
+            isActive={selectedCategory === key}
           />
         ))}
       </div>
 
-      <div className="bg-[#3d3d3d] text-cream p-6 rounded-2xl shadow-lg mt-8 flex flex-col items-center justify-center text-center">
-        <h2 className="text-3xl font-bold mb-2">{formatCurrency(remainingTotal)}</h2>
-        <p className="text-sm opacity-80 uppercase tracking-wide font-medium">Left to spend this month</p>
+      <div className="bg-gradient-to-br from-sage-dark to-teal text-white p-10 rounded-[2rem] shadow-2xl flex flex-col items-center justify-center text-center border-4 border-sage-light/30">
+        <h2 className="text-5xl font-extrabold mb-3 drop-shadow-lg">{formatCurrency(remainingTotal)}</h2>
+        <p className="text-base opacity-90 uppercase tracking-widest font-bold">Left to spend this month</p>
       </div>
     </div>
   );

@@ -11,36 +11,45 @@ export default function SplurgeMeter() {
   const treatsPct = totalTracked > 0 ? (treatsSpent / totalTracked) * 100 : 0;
 
   return (
-    <div className="w-full space-y-2 mb-6">
-      <div className="flex justify-between text-sm font-semibold text-text-light">
-        <span className="text-sage-dark">Needs {Math.round(needsPct)}%</span>
-        <span className="text-dusty-purple-dark">Wants {Math.round(wantsPct)}%</span>
-        <span className="text-warm-rose">Treats {Math.round(treatsPct)}%</span>
+    <div className="w-full space-y-4 bg-white p-8 rounded-[1.5rem] shadow-lg border-2 border-sage-light/30">
+      <div className="flex justify-between text-base font-bold gap-6">
+        <span className="text-sage-dark flex items-center gap-2.5">
+          <span className="w-4 h-4 rounded-full bg-sage flex-shrink-0"></span>
+          <span className="truncate">Needs {Math.round(needsPct)}%</span>
+        </span>
+        <span className="text-dusty-purple-dark flex items-center gap-2.5">
+          <span className="w-4 h-4 rounded-full bg-dusty-purple flex-shrink-0"></span>
+          <span className="truncate">Wants {Math.round(wantsPct)}%</span>
+        </span>
+        <span className="text-warm-rose flex items-center gap-2.5">
+          <span className="w-4 h-4 rounded-full bg-warm-rose flex-shrink-0"></span>
+          <span className="truncate">Treats {Math.round(treatsPct)}%</span>
+        </span>
       </div>
-      
-      <div className="h-4 w-full bg-cream-dark/30 rounded-full flex overflow-hidden shadow-inner">
+
+      <div className="h-7 w-full bg-cream-dark/50 rounded-full flex overflow-hidden shadow-inner border-2 border-cream-dark/30">
         {needsPct > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${needsPct}%` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="h-full bg-sage"
+            transition={{ duration: 0.9, ease: "easeOut" }}
+            className="h-full bg-sage shadow-sm"
           />
         )}
         {wantsPct > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${wantsPct}%` }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-            className="h-full bg-dusty-purple"
+            transition={{ duration: 0.9, ease: "easeOut", delay: 0.15 }}
+            className="h-full bg-dusty-purple shadow-sm"
           />
         )}
         {treatsPct > 0 && (
-          <motion.div 
+          <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${treatsPct}%` }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            className="h-full bg-warm-rose"
+            transition={{ duration: 0.9, ease: "easeOut", delay: 0.3 }}
+            className="h-full bg-warm-rose shadow-sm"
           />
         )}
       </div>

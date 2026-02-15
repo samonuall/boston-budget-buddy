@@ -30,10 +30,11 @@
 
 body {
   font-family: 'Nunito', sans-serif;
-  background-color: #faf8f5;
+  background: linear-gradient(to bottom, #faf8f5 0%, #f5f2ed 100%);
   color: #3d3d3d;
   overflow-x: hidden;
   min-height: 100vh;
+  letter-spacing: 0.01em;
 }
 
 #root {
@@ -41,20 +42,22 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(240, 235, 228, 0.5);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d8c8e8;
-  border-radius: 3px;
+  background: linear-gradient(180deg, #b8a0c8 0%, #9878b0 100%);
+  border-radius: 10px;
+  border: 2px solid rgba(250, 248, 245, 0.5);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b8a0c8;
+  background: linear-gradient(180deg, #9878b0 0%, #7858a0 100%);
 }
 
 button, input, select, textarea {
@@ -63,7 +66,9 @@ button, input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(143, 184, 160, 0.3);
+  box-shadow: 0 0 0 4px rgba(143, 184, 160, 0.25), 0 4px 12px rgba(143, 184, 160, 0.15);
+  transform: translateY(-1px);
+  transition: all 0.3s ease;
 }
 
 .titlebar-drag {

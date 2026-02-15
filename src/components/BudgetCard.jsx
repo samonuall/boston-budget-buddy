@@ -2,42 +2,62 @@ import { motion } from 'framer-motion';
 import { CATEGORIES } from '../utils/constants';
 import { formatCurrency } from '../utils/taxCalculator';
 
-export default function BudgetCard({ category, budget, spent, status }) {
+export default function BudgetCard({ category, budget, spent, status, onClick, isActive }) {
   const catInfo = CATEGORIES[category];
   const percentage = Math.min(100, Math.max(0, (spent / budget) * 100));
-  
+
   // Determine color based on status
   let barColor = 'bg-sage';
-  if (status === 'warning') barColor = 'bg-warning';
-  if (status === 'over') barColor = 'bg-danger';
+  let cardBg = 'bg-white';
+  let cardBorder = 'border-sage-light/40';
+  if (status === 'warning') {
+    barColor = 'bg-warning';
+    cardBorder = 'border-warning/40';
+  }
+  if (status === 'over') {
+    barColor = 'bg-danger';
+    cardBg = 'bg-warm-rose-light/10';
+    cardBorder = 'border-warm-rose/50';
+  }
+
+  // Active state overrides border and adds ring
+  if (isActive) {
+    cardBorder = 'border-teal ring-4 ring-teal/30';
+  }
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-cream-dark flex flex-col gap-2">
-      <div className="flex justify-between items-center mb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{catInfo?.emoji}</span>
-          <h4 className="font-bold text-text capitalize">{catInfo?.label}</h4>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4 }}
+      className={`${cardBg} p-6 rounded-[1.5rem] shadow-lg border-2 ${cardBorder} flex flex-col gap-4 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] ${onClick ? 'cursor-pointer' : ''} ${isActive ? 'shadow-2xl' : ''}`}
+      onClick={onClick ? () => onClick(category) : undefined}
+    >
+      <div className="flex justify-between items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span className="text-3xl drop-shadow-sm flex-shrink-0">{catInfo?.emoji}</span>
+          <h4 className="font-bold text-text capitalize text-base truncate">{catInfo?.label}</h4>
         </div>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${status === 'over' ? 'bg-red-100 text-danger' : 'bg-cream text-text-light'}`}>
+        <span className={`text-sm font-extrabold px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0 ${status === 'over' ? 'bg-warm-rose/20 text-danger' : 'bg-sage-light/30 text-sage-dark'}`}>
           {Math.round(percentage)}%
         </span>
       </div>
 
-      <div className="h-3 w-full bg-cream-dark/30 rounded-full overflow-hidden">
-        <motion.div 
-          className={`h-full ${barColor}`}
+      <div className="h-4 w-full bg-cream-dark/50 rounded-full overflow-hidden shadow-inner">
+        <motion.div
+          className={`h-full ${barColor} shadow-sm`}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         />
       </div>
 
-      <div className="flex justify-between items-end mt-1">
-        <span className="text-xs font-semibold text-text-lighter">
-          {formatCurrency(spent)} <span className="font-normal">/ {formatCurrency(budget)}</span>
+      <div className="flex justify-between items-end gap-3">
+        <span className="text-sm font-bold text-text truncate min-w-0">
+          {formatCurrency(spent)} <span className="font-normal text-text-light">/ {formatCurrency(budget)}</span>
         </span>
-        <span className="text-[10px] uppercase tracking-wider text-text-lighter font-medium">Spent</span>
+        <span className="text-[10px] uppercase tracking-wider text-text-lighter font-semibold whitespace-nowrap flex-shrink-0">Spent</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
