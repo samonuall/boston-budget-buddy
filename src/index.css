@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #faf8f5;
+  --color-cream-dark: #f0ebe4;
+  --color-sage: #8fb8a0;
+  --color-sage-light: #c5dece;
+  --color-sage-dark: #6a9a7e;
+  --color-dusty-purple: #b8a0c8;
+  --color-dusty-purple-light: #d8c8e8;
+  --color-dusty-purple-dark: #9878b0;
+  --color-teal: #7eb8b8;
+  --color-teal-light: #b0d8d8;
+  --color-warm-rose: #d4a0a0;
+  --color-warm-rose-light: #e8c8c8;
+  --color-text: #3d3d3d;
+  --color-text-light: #7a7a7a;
+  --color-text-lighter: #a8a8a8;
+  --color-warning: #d4b896;
+  --color-danger: #c88a8a;
+  --color-success: #8fb8a0;
+  --font-family-nunito: 'Nunito', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: #faf8f5;
+  color: #3d3d3d;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d8c8e8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b8a0c8;
+}
+
+button, input, select, textarea {
+  font-family: 'Nunito', sans-serif;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(143, 184, 160, 0.3);
+}
+
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
