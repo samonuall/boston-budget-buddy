@@ -132,13 +132,20 @@ function createWindow() {
     },
   });
 
-  // In development, load from Vite dev server
-  if (process.env.NODE_ENV !== 'production') {
+  // Use app.isPackaged, NOT process.env.NODE_ENV: Electron never sets NODE_ENV
+  // in a packaged app, so the old check was always true and the shipped build
+  // tried to load the Vite dev server — a blank window on any other machine.
+  if (app.isPackaged) {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  } else {
     mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // Surface load failures instead of silently showing an empty window.
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[main] failed to load ${validatedURL}: ${errorDescription} (${errorCode})`);
+  });
 }
 
 app.whenReady().then(() => {
@@ -154,8 +161,17 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (db) db.close();
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+// Close the database only when actually quitting. Closing it on
+// 'window-all-closed' left macOS with a still-running app whose DB was shut, so
+// reopening from the dock produced a window where every IPC call threw.
+app.on('before-quit', () => {
+  if (db) {
+    db.close();
+    db = null;
   }
 });
