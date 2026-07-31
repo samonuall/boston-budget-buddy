@@ -22,29 +22,36 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
+      "electron/**/*"
     ],
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"
     ],
     "mac": {
-      "target": "dmg",
-      "icon": "public/icon.png"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "public/icon.png",
+      "category": "public.app-category.finance"
     }
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.18",
     "better-sqlite3": "^12.6.2",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.564.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.18",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "tailwindcss": "^4.1.18",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
