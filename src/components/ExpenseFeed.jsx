@@ -1,11 +1,10 @@
 import { useBudget } from '../hooks/useBudget';
-import { CATEGORIES } from '../utils/constants';
 import { formatCurrency } from '../utils/taxCalculator';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ExpenseFeed({ categoryFilter, onClearFilter }) {
-  const { expenses, removeExpense } = useBudget();
+  const { expenses, removeExpense, getCategory } = useBudget();
 
   // Filter expenses if a category is selected
   const filteredExpenses = categoryFilter
@@ -13,16 +12,16 @@ export default function ExpenseFeed({ categoryFilter, onClearFilter }) {
     : expenses;
 
   // Get category info for header
-  const categoryInfo = categoryFilter ? CATEGORIES[categoryFilter] : null;
+  const categoryInfo = categoryFilter ? getCategory(categoryFilter) : null;
 
   return (
     <div className="space-y-4 bg-white p-7 rounded-[1.5rem] shadow-lg border-2 border-teal-light/40">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xl font-extrabold text-text">
           {categoryFilter ? (
-            <span className="flex items-center gap-2">
-              <span>{categoryInfo?.emoji}</span>
-              <span>{categoryInfo?.label} Expenses</span>
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="emoji text-xl">{categoryInfo?.emoji}</span>
+              <span className="truncate">{categoryInfo?.label} Expenses</span>
             </span>
           ) : (
             'Recent Expenses'
@@ -47,7 +46,7 @@ export default function ExpenseFeed({ categoryFilter, onClearFilter }) {
             </p>
           ) : (
             filteredExpenses.map((expense) => {
-              const cat = CATEGORIES[expense.category] || { label: 'Unknown', emoji: '❓' };
+              const cat = getCategory(expense.category);
               const dateObj = new Date(expense.date);
               const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
@@ -60,8 +59,8 @@ export default function ExpenseFeed({ categoryFilter, onClearFilter }) {
                   className="group flex items-center justify-between bg-gradient-to-r from-cream to-cream-dark/30 p-5 rounded-xl border-2 border-sage-light/30 shadow-sm hover:shadow-lg hover:scale-[1.01] transition-all duration-300"
                 >
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl text-xl shadow-sm border-2 border-sage-light/20 flex-shrink-0">
-                      {cat.emoji}
+                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm border-2 border-sage-light/20 flex-shrink-0 flex items-center justify-center">
+                      <span className="emoji text-xl">{cat.emoji}</span>
                     </div>
                     <div className="min-w-0">
                       <p className="font-bold text-text text-sm truncate">{cat.label}</p>

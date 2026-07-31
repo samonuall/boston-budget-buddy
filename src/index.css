@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/**
+ * Nunito, self-hosted. This app is distributed as a local Electron build and is
+ * often used offline — loading it from fonts.googleapis.com meant the whole UI
+ * silently fell back to system sans-serif (different metrics, different
+ * rhythm) whenever the network was unavailable.
+ *
+ * Nunito v32 is a variable font, so one 39KB latin subset covers every weight.
+ */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: block;
+  src: url('/fonts/nunito-latin-var.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @theme {
   --color-cream: #faf8f5;
   --color-cream-dark: #f0ebe4;
@@ -22,10 +41,29 @@
   --font-family-nunito: 'Nunito', sans-serif;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/**
+ * This reset MUST stay inside `@layer base`.
+ *
+ * Tailwind v4 emits its utilities into `@layer utilities`, and in the CSS
+ * cascade *unlayered* rules beat *layered* ones regardless of specificity. When
+ * this block sat outside a layer it silently defeated every p-*, m-*, mx-auto
+ * and space-y-* utility in the app — cards rendered with no inner padding and
+ * centred containers hugged the left edge. Keeping it in `base` puts it before
+ * `utilities`, so the utilities win again.
+ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+}
+
+html {
+  /* Reserve the scrollbar on BOTH sides. Without this, a centered max-width
+     container is centered inside (viewport - scrollbar), so the whole page
+     reads as shifted left by half the scrollbar width. */
+  scrollbar-gutter: stable both-edges;
 }
 
 body {
@@ -35,10 +73,37 @@ body {
   overflow-x: hidden;
   min-height: 100vh;
   letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Never fake a weight we don't have — synthesised bold has wrong metrics. */
+  font-synthesis-weight: none;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/**
+ * Emoji need their own alignment rules.
+ *
+ * `letter-spacing` applies AFTER the last character too, so an emoji inside a
+ * centred box is laid out as "glyph + trailing space" and the visible glyph
+ * ends up offset to the left. Zeroing it and centring via inline-flex with
+ * line-height 1 makes emoji sit optically dead-centre, both horizontally and
+ * against adjacent text of a different size.
+ */
+.emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  text-indent: 0;
+  font-variant-emoji: emoji;
+  flex-shrink: 0;
 }
 
 ::-webkit-scrollbar {
@@ -67,8 +132,14 @@ button, input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   box-shadow: 0 0 0 4px rgba(143, 184, 160, 0.25), 0 4px 12px rgba(143, 184, 160, 0.15);
-  transform: translateY(-1px);
-  transition: all 0.3s ease;
+  /* No translateY here — nudging the field on focus made rows visibly jump out
+     of alignment with their labels while typing. */
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Numbers line up in columns instead of jittering as digits change. */
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
 }
 
 .titlebar-drag {

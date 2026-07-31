@@ -1,12 +1,10 @@
 import { useBudget } from './hooks/useBudget'
 import Dashboard from './pages/Dashboard'
 import Onboarding from './pages/Onboarding'
-import Dale from './components/Dale'
-import { DALE_QUOTES } from './utils/constants'
 import { AnimatePresence, motion } from 'framer-motion'
 
 function App() {
-  const { loading, onboardingComplete, daleMood } = useBudget()
+  const { loading, onboardingComplete } = useBudget()
 
   if (loading) {
     return (
@@ -22,8 +20,6 @@ function App() {
       </div>
     )
   }
-
-  const quotes = DALE_QUOTES[daleMood] || DALE_QUOTES.greeting
 
   return (
     <div className="min-h-screen bg-cream relative">
@@ -48,7 +44,6 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      <Dale mood={daleMood} quotes={quotes} />
     </div>
   )
 }

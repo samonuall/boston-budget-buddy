@@ -7,6 +7,7 @@
 - **Electron dev**: `npm run electron:dev` (starts Vite + Electron concurrently)
 - **Build**: `npm run build` (Vite build) / `npm run electron:build` (Vite + electron-builder)
 - **No test framework** is configured yet
+- **Version 2.0.0** — categories are user-editable; see the Categories section
 
 ## Architecture
 
@@ -36,22 +37,62 @@ Abstracts Electron IPC vs localStorage. Every function checks `window.electronAP
 - 401(k) deducted pre-tax from gross
 - `calculateTakeHome(gross, bonus, four01kPct)` returns full breakdown
 
-### Categories (src/utils/constants.js)
+### Categories (src/utils/categories.js) — user-editable data, v2+
 
-11 budget categories, each typed as needs/wants/savings:
-- **Needs**: rent, food, utilities, transportation, renters_insurance, personal_care
-- **Wants**: gym, fun, social
-- **Savings**: roth_ira, savings
+Categories are **not** a constant. They live in the `categories` setting as JSON:
+`{ key, label, emoji, type, order, archived }`, and are created/renamed/deleted
+from the Settings modal.
 
-Splurge meter shows Needs / Wants / Treats (treats = 30% of wants spending).
+- `key` is a **stable id referenced by every row in `expenses`** — it is assigned
+  once and never rewritten. Renaming changes `label`, never `key`.
+- `DEFAULT_CATEGORIES` in constants.js is *seed data only*, used on first run and
+  to backfill a key found in saved budgets with no definition.
+- Migration runs in `useBudget.jsx` (not `main.cjs`) so it behaves identically in
+  browser dev and Electron. It is additive — it never touches the expenses table.
+- **Delete = archive** when the category has expenses (label/emoji must survive
+  for old rows); **purge** only when it has none. See `CategoryEditor.jsx`.
+- `getCategory(key)` always returns a renderable record, falling back to `❓` for
+  unknown keys, so a missing definition can never crash a render.
 
-### Dale the Dachshund (src/components/Dale.jsx)
+`type` (needs/wants/savings) is now only a grouping label for the settings UI.
 
-SVG mascot fixed at viewport bottom. Mood states: happy, nervous, alarmed, sleeping.
-Mood derived in `useBudget()` based on `overBudgetCategories` and `warningCategories`.
-Click to cycle through mood-specific quotes from `DALE_QUOTES` in constants.js.
+### Budget status (`deriveCategoryStatus`)
 
-## Tailwind Theme (src/index.css)
+`neutral` (no budget) · `good` · `warning` (≥80%) · **`met`** (exactly on budget)
+· `over` (strictly above). `met` is a win: it renders green and is deliberately
+excluded from `overBudgetCategories`. Uses a half-cent epsilon for float drift.
+
+### Dale the Dachshund (src/components/Dale.jsx + DaleZone.jsx)
+
+PNG mascot rendered **in the page flow**, inside `BudgetOverview` below the
+"Left to spend this month" card — not a fixed overlay.
+
+- **Dale only ever says nice things.** Every pool in `DALE_QUOTES` is kind; there
+  is a test asserting no scolding vocabulary appears. Keep it that way.
+- Quotes are picked by time of day (morning / day / night) via `utils/dale.js`.
+  The clock is read **in the click handler**, not at render, so an app left open
+  overnight still greets you correctly.
+- Hats (`DALE_HATS`) are emoji anchored to his head via `HAT_ANCHOR`, expressed
+  as % of Dale's rendered size. Persisted in the `dale_hat` setting.
+- Drag the 🦴 onto him to feed him — hit-testing compares the pointer position
+  against Dale's `getBoundingClientRect()`.
+
+## Styling (src/index.css)
+
+> ⚠️ **Any global reset MUST stay inside `@layer base`.** Tailwind v4 emits
+> utilities into `@layer utilities`, and unlayered CSS beats layered CSS in the
+> cascade regardless of specificity. An unlayered `* { margin: 0; padding: 0 }`
+> silently kills every `p-*`, `m-*`, `mx-auto` and `space-y-*` in the app — cards
+> lose their inner padding and centred containers hug the left edge.
+
+> **Nunito is self-hosted** (`public/fonts/`, one 39KB variable woff2 covering
+> weights 200–1000). Do not re-add a Google Fonts `<link>`: this app runs locally
+> and often offline, and a failed font request silently changes every metric.
+
+Use the `.emoji` class wherever an emoji renders. `letter-spacing` applies after
+the final character too, so an emoji in a centred box is laid out as
+"glyph + trailing space" and drifts visibly left. `.emoji` zeroes it and centres
+via inline-flex with `line-height: 1`.
 
 Custom `@theme` colors — use these, not arbitrary hex:
 - `cream`, `cream-dark` — backgrounds
@@ -67,7 +108,12 @@ Custom `@theme` colors — use these, not arbitrary hex:
 | File | What it does |
 |------|-------------|
 | `src/hooks/useBudget.jsx` | Central state — start here for any logic changes |
-| `src/utils/constants.js` | Categories, defaults, Dale quotes |
+| `src/utils/constants.js` | Seed categories, defaults, Dale quotes + hats |
+| `src/utils/categories.js` | Category model, migration, status rule |
+| `src/utils/dale.js` | Time-of-day quote selection |
+| `src/components/CategoryEditor.jsx` | Add/rename/delete categories in Settings |
+| `src/components/EmojiPicker.jsx` | Self-contained emoji picker (no external dep) |
+| `src/components/DaleZone.jsx` | Dale + hat rack + draggable treat |
 | `src/utils/taxCalculator.js` | Tax math — update for new tax years |
 | `src/utils/storage.js` | Persistence abstraction |
 | `electron/main.cjs` | SQLite schema + IPC handlers |
@@ -77,8 +123,8 @@ Custom `@theme` colors — use these, not arbitrary hex:
 
 ## Common Tasks
 
-**Add a new budget category**: Add to `CATEGORIES` in constants.js, add default in
-`DEFAULT_BUDGETS`, update type arrays (`NEEDS_CATEGORIES`, etc.) if needed.
+**Add a budget category**: do it in the app (Settings -> Add category). Only edit
+`DEFAULT_CATEGORIES` to change what a *brand new* install starts with.
 
 **Add a new IPC method**: Add handler in `electron/main.cjs`, expose in
 `electron/preload.cjs`, add fallback in `src/utils/storage.js`, consume in `useBudget.jsx`.
@@ -90,11 +136,11 @@ quotes in `constants.js` (`DALE_QUOTES`), animations in `Dale.jsx`.
 
 ## Known Gaps / Future Work
 
-- No test suite — add Vitest + React Testing Library
+- No test framework wired into `npm` yet (logic in `utils/` is pure and easy to
+  cover — add Vitest)
 - No TypeScript — consider migrating for type safety
 - No recurring/fixed expense automation
 - No data export (CSV/PDF)
 - No multi-month trend charts or analytics
 - Electron build only targets macOS currently
 - No CI/CD pipeline
-- Settings modal lacks category budget editing (set during onboarding only)

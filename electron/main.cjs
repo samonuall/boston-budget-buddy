@@ -97,6 +97,13 @@ function setupIpcHandlers() {
     ).all(startDate, endDate);
   });
 
+  // How many expenses (all time) reference each category. Drives whether the
+  // settings UI can safely purge a category or must archive it instead.
+  ipcMain.handle('count-expenses-by-category', () => {
+    const rows = db.prepare('SELECT category, COUNT(*) AS count FROM expenses GROUP BY category').all();
+    return Object.fromEntries(rows.map((r) => [r.category, r.count]));
+  });
+
   ipcMain.handle('delete-expense', (_, id) => {
     db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
     return true;

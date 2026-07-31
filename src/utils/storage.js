@@ -61,6 +61,18 @@ export async function getExpenses(month, year) {
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+/** { categoryKey: count } across all months. Used to guard category deletion. */
+export async function countExpensesByCategory() {
+  if (isElectron) {
+    return window.electronAPI.countExpensesByCategory();
+  }
+  const expenses = JSON.parse(localStorage.getItem('bbb_expenses') || '[]');
+  return expenses.reduce((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + 1;
+    return acc;
+  }, {});
+}
+
 export async function deleteExpense(id) {
   if (isElectron) {
     return window.electronAPI.deleteExpense(id);

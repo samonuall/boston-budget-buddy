@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBudget } from '../hooks/useBudget'
-import { CATEGORIES, CATEGORY_KEYS, DEFAULT_BUDGETS } from '../utils/constants'
-import { calculateTakeHome, formatCurrency } from '../utils/taxCalculator'
+import { formatCurrency } from '../utils/taxCalculator'
 
 const pageVariants = {
   initial: { opacity: 0, x: 60 },
@@ -203,7 +202,7 @@ function IncomeStep({ grossSalary, bonus, four01kPercent, onGrossSalaryChange, o
   )
 }
 
-function BudgetStep({ monthlyTakeHome, budgets, onBudgetChange, onSave }) {
+function BudgetStep({ monthlyTakeHome, categories, budgets, onBudgetChange, onSave }) {
   const totalAllocated = Object.values(budgets).reduce((sum, v) => sum + v, 0)
   const remaining = monthlyTakeHome - totalAllocated
   const allocationPercent = monthlyTakeHome > 0 ? Math.min(100, (totalAllocated / monthlyTakeHome) * 100) : 0
@@ -277,8 +276,8 @@ function BudgetStep({ monthlyTakeHome, budgets, onBudgetChange, onSave }) {
 
       {/* Category Budget Cards */}
       <div className="flex flex-col gap-3 mb-6">
-        {CATEGORY_KEYS.map((key, index) => {
-          const cat = CATEGORIES[key]
+        {categories.map((cat, index) => {
+          const key = cat.key
           const amount = budgets[key] || 0
           const categoryPercent = monthlyTakeHome > 0 ? (amount / monthlyTakeHome) * 100 : 0
 
@@ -292,9 +291,9 @@ function BudgetStep({ monthlyTakeHome, budgets, onBudgetChange, onSave }) {
               className="bg-white rounded-2xl shadow-sm border border-cream-dark/50 p-4 flex items-center gap-4"
             >
               {/* Emoji + Label */}
-              <div className="flex items-center gap-2.5 min-w-[140px]">
-                <span className="text-xl">{cat.emoji}</span>
-                <span className="text-sm font-semibold text-text">{cat.label}</span>
+              <div className="flex items-center gap-2.5 w-[150px] flex-shrink-0">
+                <span className="emoji text-xl w-6 h-6">{cat.emoji}</span>
+                <span className="text-sm font-semibold text-text truncate">{cat.label}</span>
               </div>
 
               {/* Input */}
@@ -342,7 +341,7 @@ function BudgetStep({ monthlyTakeHome, budgets, onBudgetChange, onSave }) {
         variants={cardVariants}
         initial="initial"
         animate="animate"
-        custom={CATEGORY_KEYS.length + 2}
+        custom={categories.length + 2}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={onSave}
@@ -374,6 +373,8 @@ export default function Onboarding() {
     grossSalary,
     bonus,
     four01kPercent,
+    categories,
+    categoryBudgets,
     updateGrossSalary,
     updateBonus,
     update401kPercent,
@@ -383,7 +384,8 @@ export default function Onboarding() {
   } = useBudget()
 
   const [step, setStep] = useState(1)
-  const [budgets, setBudgets] = useState({ ...DEFAULT_BUDGETS })
+  // Seed from the migrated budgets so an upgraded install keeps its numbers.
+  const [budgets, setBudgets] = useState({ ...categoryBudgets })
 
   const handleBudgetChange = (key, value) => {
     setBudgets((prev) => ({ ...prev, [key]: value }))
@@ -436,6 +438,7 @@ export default function Onboarding() {
         {step === 2 && (
           <BudgetStep
             monthlyTakeHome={takeHome.monthlyTakeHome}
+            categories={categories}
             budgets={budgets}
             onBudgetChange={handleBudgetChange}
             onSave={handleSave}

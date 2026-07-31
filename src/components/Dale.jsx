@@ -1,14 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
-
-// ---------- helpers ----------
-const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-const defaultQuotes = [
-  'Woof! Keep saving those treats!',
-  'Every penny counts... just like every belly rub!',
-  'You got this, budget boss!',
-];
+import { motion, AnimatePresence } from 'framer-motion';
+import { HAT_ANCHOR, DALE_HATS } from '../utils/constants';
 
 // ---------- Speech bubble ----------
 function SpeechBubble({ text, onClose }) {
@@ -27,50 +18,38 @@ function SpeechBubble({ text, onClose }) {
         bottom: '100%',
         left: '50%',
         transform: 'translateX(-50%)',
-        marginBottom: 20,
+        marginBottom: 16,
         background: 'linear-gradient(135deg, #FFFDF5 0%, #FFF9EB 100%)',
         border: '3px solid #D4A843',
         borderRadius: 24,
-        padding: '16px 24px',
-        maxWidth: 280,
+        padding: '14px 22px',
+        width: 'max-content',
+        maxWidth: 260,
         fontSize: 15,
         lineHeight: 1.5,
         color: '#3D2E0A',
-        fontFamily: "'Nunito', 'Segoe UI', system-ui, sans-serif",
         fontWeight: 700,
         boxShadow: '0 8px 24px rgba(107, 79, 18, 0.25), 0 2px 8px rgba(107, 79, 18, 0.15)',
         cursor: 'pointer',
-        whiteSpace: 'normal',
         textAlign: 'center',
-        zIndex: 10001,
-        pointerEvents: 'auto',
+        zIndex: 20,
       }}
     >
       {text}
-      {/* little triangle pointer - rounder */}
+      {/* rounded triangle pointer */}
       <span
         style={{
-          position: 'absolute',
-          bottom: -12,
-          left: '50%',
-          marginLeft: -10,
-          width: 0,
-          height: 0,
-          borderLeft: '10px solid transparent',
-          borderRight: '10px solid transparent',
+          position: 'absolute', bottom: -12, left: '50%', marginLeft: -10,
+          width: 0, height: 0,
+          borderLeft: '10px solid transparent', borderRight: '10px solid transparent',
           borderTop: '12px solid #D4A843',
         }}
       />
       <span
         style={{
-          position: 'absolute',
-          bottom: -8,
-          left: '50%',
-          marginLeft: -8,
-          width: 0,
-          height: 0,
-          borderLeft: '8px solid transparent',
-          borderRight: '8px solid transparent',
+          position: 'absolute', bottom: -8, left: '50%', marginLeft: -8,
+          width: 0, height: 0,
+          borderLeft: '8px solid transparent', borderRight: '8px solid transparent',
           borderTop: '10px solid #FFFDF5',
         }}
       />
@@ -78,95 +57,80 @@ function SpeechBubble({ text, onClose }) {
   );
 }
 
-// ---------- Dale component ----------
-export default function Dale({ mood = 'greeting', quotes = defaultQuotes }) {
-  const [showBubble, setShowBubble] = useState(false);
-  const [currentQuote, setCurrentQuote] = useState('');
-
-  // Use motion values to track position
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  // Set initial position on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      x.set(window.innerWidth / 2 - 75); // Center horizontally (75 is half of 150px width)
-      y.set(window.innerHeight - 160); // Bottom of screen
-    }
-  }, [x, y]);
-
-  const handleClick = () => {
-    const q = quotes && quotes.length > 0 ? quotes : defaultQuotes;
-    setCurrentQuote(pickRandom(q));
-    setShowBubble((prev) => !prev);
-  };
-
-  // Dachshund image
-  const daleImageUrl = "/dale.png";
+// ---------- Dale ----------
+export default function Dale({
+  hat = null,
+  quote = '',
+  isEating = false,
+  isHovered = false,
+  size = 200,
+  onClick,
+  onDismissQuote,
+  innerRef,
+}) {
+  const hatDef = DALE_HATS.find((h) => h.id === hat);
 
   return (
-    <motion.div
-      drag
-      dragElastic={0.1}
-      dragMomentum={false}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        x,
-        y,
-        zIndex: 10000,
-        cursor: 'grab',
-        userSelect: 'none',
-        pointerEvents: 'auto',
-      }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      whileDrag={{ cursor: 'grabbing', scale: 1.05 }}
-      transition={{ opacity: { duration: 0.5 } }}
+    <div
+      ref={innerRef}
+      onClick={onClick}
+      style={{ position: 'relative', width: size, cursor: 'pointer', userSelect: 'none' }}
     >
-      {/* speech bubble */}
       <AnimatePresence>
-        {showBubble && currentQuote && (
-          <SpeechBubble
-            key="bubble"
-            text={currentQuote}
-            onClose={() => setShowBubble(false)}
-          />
-        )}
+        {quote && <SpeechBubble key="bubble" text={quote} onClose={onDismissQuote} />}
       </AnimatePresence>
 
-      {/* Dale's image */}
       <motion.div
-        onClick={handleClick}
-        animate={{
-          y: [0, -8, 0],
-        }}
-        transition={{
-          duration: 2.5,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-        whileHover={{ scale: 1.1 }}
+        animate={
+          isEating
+            ? { rotate: [0, -7, 6, -5, 4, 0], scale: [1, 1.07, 0.98, 1.05, 1], y: 0 }
+            : { y: [0, -8, 0], rotate: 0, scale: isHovered ? 1.05 : 1 }
+        }
+        transition={
+          isEating
+            ? { duration: 0.9, ease: 'easeInOut' }
+            : {
+                y: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' },
+                scale: { duration: 0.2 },
+              }
+        }
         style={{
           position: 'relative',
-          filter: 'drop-shadow(0 4px 12px rgba(107, 79, 18, 0.25))',
+          filter: 'drop-shadow(0 6px 14px rgba(107, 79, 18, 0.22))',
         }}
       >
         <img
-          src={daleImageUrl}
+          src="/dale.png"
           alt="Dale the Dachshund"
           draggable={false}
-          onDragStart={(e) => e.preventDefault()}
-          style={{
-            width: '150px',
-            height: 'auto',
-            display: 'block',
-            pointerEvents: 'none',
-            userSelect: 'none',
-          }}
+          style={{ width: size, height: 'auto', display: 'block', pointerEvents: 'none' }}
         />
+
+        {/* Hat, anchored to Dale's head */}
+        <AnimatePresence>
+          {hatDef && (
+            <motion.span
+              key={hatDef.id}
+              className="emoji"
+              initial={{ opacity: 0, y: -22, rotate: hatDef.rotate - 25 }}
+              animate={{ opacity: 1, y: 0, rotate: hatDef.rotate }}
+              exit={{ opacity: 0, y: -22, rotate: hatDef.rotate + 25 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+              style={{
+                position: 'absolute',
+                left: `${HAT_ANCHOR.left + hatDef.dx}%`,
+                top: `${HAT_ANCHOR.top + hatDef.dy}%`,
+                fontSize: size * (HAT_ANCHOR.size / 100) * hatDef.scale,
+                translate: '-50% -50%',
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 2px 4px rgba(107, 79, 18, 0.3))',
+              }}
+            >
+              {hatDef.emoji}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

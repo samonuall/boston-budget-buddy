@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { useBudget } from '../hooks/useBudget';
-import { CATEGORIES } from '../utils/constants';
 
 export default function ExpenseForm() {
-  const { logExpense } = useBudget();
+  const { logExpense, categories } = useBudget();
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState(Object.keys(CATEGORIES)[0]);
+  const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Derived rather than synced in an effect: if the picked category is archived
+  // or deleted out from under us, fall back to the first available one.
+  const selectedCategory = categories.some((c) => c.key === category)
+    ? category
+    : categories[0]?.key ?? '';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!amount) return;
-    
-    await logExpense(amount, category, note, date);
+    if (!amount || !selectedCategory) return;
+
+    await logExpense(amount, selectedCategory, note, date);
     
     // Reset form
     setAmount('');
@@ -44,11 +49,11 @@ export default function ExpenseForm() {
         <div>
           <label className="block text-sm font-bold text-text-light mb-1.5">Category</label>
           <select
-            value={category}
+            value={selectedCategory}
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-3 text-base rounded-xl border-2 border-cream-dark focus:border-sage focus:ring-4 focus:ring-sage-light/30 outline-none bg-white transition-all"
           >
-            {Object.entries(CATEGORIES).map(([key, { label, emoji }]) => (
+            {categories.map(({ key, label, emoji }) => (
               <option key={key} value={key}>
                 {emoji} {label}
               </option>

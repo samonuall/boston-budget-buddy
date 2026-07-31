@@ -1,7 +1,17 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getAllSettings, setSetting, getExpenses, addExpense, deleteExpense, updateExpense, initializeDefaults } from '../utils/storage';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { getAllSettings, setSetting, getExpenses, addExpense, deleteExpense, updateExpense, countExpensesByCategory, initializeDefaults } from '../utils/storage';
 import { calculateTakeHome } from '../utils/taxCalculator';
-import { DEFAULT_BUDGETS, CATEGORIES, NEEDS_CATEGORIES, WANTS_CATEGORIES } from '../utils/constants';
+import { DEFAULT_BUDGETS, CATEGORY_TYPE_KEYS } from '../utils/constants';
+import {
+  CATEGORIES_SETTING_KEY,
+  parseCategories,
+  buildInitialCategories,
+  normalizeCategories,
+  indexCategories,
+  fallbackCategory,
+  slugifyKey,
+  deriveCategoryStatus,
+} from '../utils/categories';
 import { v4 as uuidv4 } from 'uuid';
 
 const BudgetContext = createContext(null);
@@ -12,8 +22,11 @@ export function BudgetProvider({ children }) {
   const [bonus, setBonus] = useState(7000);
   const [four01kPercent, setFour01kPercent] = useState(10);
   const [categoryBudgets, setCategoryBudgets] = useState(DEFAULT_BUDGETS);
+  const [allCategories, setAllCategories] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [expenseCounts, setExpenseCounts] = useState({});
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [daleHat, setDaleHat] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -29,14 +42,37 @@ export function BudgetProvider({ children }) {
       if (settings.bonus) setBonus(Number(settings.bonus));
       if (settings.four01k_percent) setFour01kPercent(Number(settings.four01k_percent));
       if (settings.onboarding_complete) setOnboardingComplete(settings.onboarding_complete === 'true');
+      if (settings.dale_hat) setDaleHat(settings.dale_hat === 'none' ? null : settings.dale_hat);
+
+      let budgets = DEFAULT_BUDGETS;
       if (settings.category_budgets) {
         try {
-          setCategoryBudgets(JSON.parse(settings.category_budgets));
-        } catch {}
+          budgets = JSON.parse(settings.category_budgets);
+        } catch {
+          // Corrupt JSON — fall back to defaults rather than wiping the setting.
+        }
       }
+      setCategoryBudgets(budgets);
+
+      // v1 -> v2 migration: seed editable categories from the hardcoded defaults
+      // plus whatever the user already had budgets for. Written once, then owned
+      // by the user. Existing expenses are never touched.
+      let cats = parseCategories(settings[CATEGORIES_SETTING_KEY]);
+      if (cats.length === 0) {
+        cats = buildInitialCategories(budgets);
+        await setSetting(CATEGORIES_SETTING_KEY, JSON.stringify(cats));
+      }
+      setAllCategories(cats);
+      setExpenseCounts(await countExpensesByCategory());
+
       setLoading(false);
     }
     load();
+  }, []);
+
+  /** All-time expense counts per category — recomputed after any expense change. */
+  const refreshExpenseCounts = useCallback(async () => {
+    setExpenseCounts(await countExpensesByCategory());
   }, []);
 
   // Load expenses when month/year changes
@@ -69,10 +105,101 @@ export function BudgetProvider({ children }) {
     await setSetting('category_budgets', JSON.stringify(budgets));
   }, []);
 
+  /** Clicking the hat Dale already wears takes it off again. */
+  const updateDaleHat = useCallback(async (hatId) => {
+    setDaleHat((prev) => {
+      const next = prev === hatId ? null : hatId;
+      setSetting('dale_hat', next || 'none');
+      return next;
+    });
+  }, []);
+
   const completeOnboarding = useCallback(async () => {
     setOnboardingComplete(true);
     await setSetting('onboarding_complete', 'true');
   }, []);
+
+  // --- Category CRUD -------------------------------------------------------
+
+  const persistCategories = useCallback(async (next) => {
+    const normalized = normalizeCategories(next);
+    setAllCategories(normalized);
+    await setSetting(CATEGORIES_SETTING_KEY, JSON.stringify(normalized));
+    return normalized;
+  }, []);
+
+  /**
+   * Create a category. The key is derived from the label and must not collide
+   * with any existing key — including archived ones, which still own expenses.
+   */
+  const createCategory = useCallback(
+    async ({ label, emoji, type = 'wants', budget = 0 } = {}) => {
+      const takenKeys = allCategories.map((c) => c.key);
+      const key = slugifyKey(label, takenKeys);
+
+      const category = {
+        key,
+        label: (label || '').trim() || key,
+        emoji: emoji || '🐾',
+        type: CATEGORY_TYPE_KEYS.includes(type) ? type : 'wants',
+        archived: false,
+        order: allCategories.length,
+      };
+
+      await persistCategories([...allCategories, category]);
+
+      const amount = Number(budget) || 0;
+      await updateCategoryBudgets({ ...categoryBudgets, [key]: amount });
+
+      return category;
+    },
+    [allCategories, categoryBudgets, persistCategories, updateCategoryBudgets]
+  );
+
+  /** Replace the whole list in one write — used by the settings editor on Save. */
+  const saveCategories = useCallback((list) => persistCategories(list), [persistCategories]);
+
+  /** Edit label / emoji / type. The key is immutable so expenses stay attached. */
+  const updateCategory = useCallback(
+    async (key, patch = {}) => {
+      const { key: _ignored, ...safe } = patch;
+      return persistCategories(
+        allCategories.map((cat) => (cat.key === key ? { ...cat, ...safe } : cat))
+      );
+    },
+    [allCategories, persistCategories]
+  );
+
+  /**
+   * Archive a category: it disappears from the dashboard, the expense form and
+   * the budget totals, but its record survives so historical expenses keep their
+   * label and emoji. Nothing in the expenses table is modified.
+   */
+  const deleteCategory = useCallback(
+    (key) => updateCategory(key, { archived: true }),
+    [updateCategory]
+  );
+
+  const restoreCategory = useCallback(
+    (key) => updateCategory(key, { archived: false }),
+    [updateCategory]
+  );
+
+  /**
+   * Permanently drop the definition and its budget line. Expense rows are still
+   * not deleted — they render via fallbackCategory() as "❓". Only offer this for
+   * categories with no history.
+   */
+  const purgeCategory = useCallback(
+    async (key) => {
+      await persistCategories(allCategories.filter((cat) => cat.key !== key));
+      const { [key]: _removed, ...rest } = categoryBudgets;
+      await updateCategoryBudgets(rest);
+    },
+    [allCategories, categoryBudgets, persistCategories, updateCategoryBudgets]
+  );
+
+  // --- Expenses ------------------------------------------------------------
 
   const logExpense = useCallback(async (amount, category, note, date) => {
     const expense = {
@@ -85,56 +212,66 @@ export function BudgetProvider({ children }) {
     };
     await addExpense(expense);
     setExpenses((prev) => [expense, ...prev]);
+    await refreshExpenseCounts();
     return expense;
-  }, []);
+  }, [refreshExpenseCounts]);
 
   const removeExpense = useCallback(async (id) => {
     await deleteExpense(id);
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+    await refreshExpenseCounts();
+  }, [refreshExpenseCounts]);
 
   const editExpense = useCallback(async (expense) => {
     await updateExpense(expense);
     setExpenses((prev) => prev.map((e) => (e.id === expense.id ? { ...e, ...expense } : e)));
-  }, []);
+    await refreshExpenseCounts();
+  }, [refreshExpenseCounts]);
 
-  // Computed values
+  // --- Derived category views ----------------------------------------------
+
+  const categories = useMemo(() => allCategories.filter((c) => !c.archived), [allCategories]);
+  const archivedCategories = useMemo(() => allCategories.filter((c) => c.archived), [allCategories]);
+  const categoryKeys = useMemo(() => categories.map((c) => c.key), [categories]);
+  const categoryMap = useMemo(() => indexCategories(allCategories), [allCategories]);
+
+  /** Always returns a renderable record, even for an unknown key. */
+  const getCategory = useCallback(
+    (key) => categoryMap[key] || fallbackCategory(key),
+    [categoryMap]
+  );
+
+  const categoriesByType = useMemo(
+    () =>
+      Object.fromEntries(
+        CATEGORY_TYPE_KEYS.map((type) => [type, categories.filter((c) => c.type === type)])
+      ),
+    [categories]
+  );
+
+  // --- Computed spending ---------------------------------------------------
+
   const spendingByCategory = expenses.reduce((acc, e) => {
     acc[e.category] = (acc[e.category] || 0) + e.amount;
     return acc;
   }, {});
 
-  const totalBudget = Object.values(categoryBudgets).reduce((sum, v) => sum + v, 0);
+  const totalBudget = categoryKeys.reduce((sum, k) => sum + (categoryBudgets[k] || 0), 0);
   const totalSpent = Object.values(spendingByCategory).reduce((sum, v) => sum + v, 0);
   const remainingTotal = takeHome.monthlyTakeHome - totalSpent;
 
-  // Splurge meter calculations
-  const needsSpent = NEEDS_CATEGORIES.reduce((sum, k) => sum + (spendingByCategory[k] || 0), 0);
-  const wantsSpent = WANTS_CATEGORIES.reduce((sum, k) => sum + (spendingByCategory[k] || 0), 0);
-  const treatsSpent = Math.max(0, wantsSpent * 0.3); // treats = ~30% of wants spending
-  const adjustedWants = wantsSpent - treatsSpent;
-
-  // Dale's mood
-  const getCategoryStatus = (category) => {
-    const budget = categoryBudgets[category] || 0;
-    const spent = spendingByCategory[category] || 0;
-    if (budget === 0) return 'neutral';
-    const pct = spent / budget;
-    if (pct >= 1) return 'over';
-    if (pct >= 0.8) return 'warning';
-    return 'good';
-  };
-
-  const overBudgetCategories = Object.keys(categoryBudgets).filter(
-    (k) => getCategoryStatus(k) === 'over'
-  );
-  const warningCategories = Object.keys(categoryBudgets).filter(
-    (k) => getCategoryStatus(k) === 'warning'
+  const getCategoryStatus = useCallback(
+    (key) => deriveCategoryStatus(spendingByCategory[key] || 0, categoryBudgets[key] || 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expenses, categoryBudgets]
   );
 
-  let daleMood = 'happy';
-  if (overBudgetCategories.length > 0) daleMood = 'alarmed';
-  else if (warningCategories.length > 0) daleMood = 'nervous';
+  // Hitting the budget exactly counts as a win — 'met' is deliberately not 'over'.
+  const overBudgetCategories = categoryKeys.filter((k) => getCategoryStatus(k) === 'over');
+  const warningCategories = categoryKeys.filter((k) => getCategoryStatus(k) === 'warning');
+
+  // Dale's mood drives his expression only — every quote pool is kind.
+  const daleMood = expenses.length === 0 ? 'sleeping' : 'happy';
 
   const value = {
     loading,
@@ -151,12 +288,27 @@ export function BudgetProvider({ children }) {
     totalBudget,
     totalSpent,
     remainingTotal,
-    needsSpent,
-    wantsSpent: adjustedWants,
-    treatsSpent,
     daleMood,
+    daleHat,
+    updateDaleHat,
     overBudgetCategories,
     warningCategories,
+    // categories
+    categories,
+    allCategories,
+    archivedCategories,
+    categoryKeys,
+    categoryMap,
+    categoriesByType,
+    expenseCounts,
+    getCategory,
+    saveCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    restoreCategory,
+    purgeCategory,
+    // setters
     setSelectedMonth,
     setSelectedYear,
     updateGrossSalary,

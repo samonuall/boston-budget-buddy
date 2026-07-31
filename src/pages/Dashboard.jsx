@@ -3,22 +3,16 @@ import { motion } from 'framer-motion'
 import { Settings } from 'lucide-react'
 import { useBudget } from '../hooks/useBudget'
 import { formatCurrency } from '../utils/taxCalculator'
-import { CATEGORIES, NEEDS_CATEGORIES, WANTS_CATEGORIES, SAVINGS_CATEGORIES } from '../utils/constants'
+import { slugifyKey, rowId } from '../utils/categories'
 import MonthSelector from '../components/MonthSelector'
-import SplurgeMeter from '../components/SplurgeMeter'
 import BudgetOverview from '../components/BudgetOverview'
+import CategoryEditor from '../components/CategoryEditor'
 import ExpenseForm from '../components/ExpenseForm'
 import ExpenseFeed from '../components/ExpenseFeed'
 
 export default function Dashboard() {
   const {
-    takeHome,
     totalSpent,
-    remainingTotal,
-    needsSpent,
-    wantsSpent,
-    treatsSpent,
-    daleMood,
     overBudgetCategories,
     warningCategories,
   } = useBudget()
@@ -44,9 +38,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-cream pb-48 px-16 md:px-24 lg:px-32 xl:px-40">
+    <div className="min-h-screen bg-cream pb-16 px-6 md:px-10 lg:px-14">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-cream/90 backdrop-blur-xl border-b-2 border-sage-light/30 -mx-16 md:-mx-24 lg:-mx-32 xl:-mx-40 px-16 md:px-24 lg:px-32 xl:px-40">
+      <div className="sticky top-0 z-30 bg-cream/90 backdrop-blur-xl border-b-2 border-sage-light/30 -mx-6 md:-mx-10 lg:-mx-14 px-6 md:px-10 lg:px-14">
         <div className="max-w-[1600px] mx-auto py-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <h1 className="text-2xl md:text-3xl font-extrabold text-text tracking-tight truncate">Boston Budget Buddy</h1>
@@ -61,11 +55,6 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Splurge Meter */}
-      <div className="max-w-[1600px] mx-auto mt-10">
-        <SplurgeMeter />
       </div>
 
       {/* Main Content */}
@@ -105,61 +94,70 @@ export default function Dashboard() {
   )
 }
 
-// Helper component for grouped category budget inputs
-function CategoryGroup({ title, categories, budgets, onBudgetChange }) {
-  return (
-    <div>
-      <h4 className="text-sm font-bold text-text-light uppercase tracking-wider mb-3">{title}</h4>
-      <div className="grid grid-cols-2 gap-3">
-        {categories.map((key) => {
-          const cat = CATEGORIES[key]
-          return (
-            <div key={key}>
-              <label className="block text-xs font-bold text-text-light mb-1.5 flex items-center gap-1.5">
-                <span>{cat.emoji}</span>
-                <span>{cat.label}</span>
-              </label>
-              <input
-                type="number"
-                value={budgets[key] || 0}
-                onChange={(e) => onBudgetChange(key, e.target.value)}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border-2 border-cream-dark bg-cream focus:border-sage focus:ring-4 focus:ring-sage-light/30 outline-none transition-all"
-                min="0"
-                step="10"
-              />
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function SettingsModal({ onClose }) {
   const {
     grossSalary,
     bonus,
     four01kPercent,
     categoryBudgets,
+    allCategories,
+    expenseCounts,
     takeHome,
     updateGrossSalary,
     updateBonus,
     update401kPercent,
     updateCategoryBudgets,
+    saveCategories,
   } = useBudget()
 
   const [localSalary, setLocalSalary] = useState(grossSalary)
   const [localBonus, setLocalBonus] = useState(bonus)
   const [local401k, setLocal401k] = useState(four01kPercent)
+  // Everything below is edited locally and only written on Save, so Cancel
+  // genuinely cancels — including category renames, additions and deletions.
+  const [localCategories, setLocalCategories] = useState(() => allCategories.map((c) => ({ ...c })))
   const [localBudgets, setLocalBudgets] = useState({ ...categoryBudgets })
 
+  const handleBudgetChange = (id, value) =>
+    setLocalBudgets((prev) => ({ ...prev, [id]: Number(value) || 0 }))
+
   const handleSave = async () => {
+    // Assign real keys to newly added rows now that their labels are final, and
+    // rebuild the budget map so purged categories drop out of it too.
+    const takenKeys = localCategories.filter((c) => !c.isNew).map((c) => c.key)
+    const finalCategories = []
+    const finalBudgets = {}
+
+    localCategories.forEach((cat, index) => {
+      const label = (cat.label || '').trim()
+      let key = cat.key
+      if (cat.isNew) {
+        key = slugifyKey(label, takenKeys)
+        takenKeys.push(key)
+      }
+      finalCategories.push({
+        key,
+        label: label || undefined, // normalizeCategories derives one from the key
+        emoji: cat.emoji,
+        type: cat.type,
+        archived: cat.archived === true,
+        order: index,
+      })
+      finalBudgets[key] = Number(localBudgets[rowId(cat)]) || 0
+    })
+
     await updateGrossSalary(Number(localSalary))
     await updateBonus(Number(localBonus))
     await update401kPercent(Number(local401k))
-    await updateCategoryBudgets(localBudgets)
+    await saveCategories(finalCategories)
+    await updateCategoryBudgets(finalBudgets)
     onClose()
   }
+
+  const allocated = localCategories
+    .filter((c) => !c.archived)
+    .reduce((sum, c) => sum + (Number(localBudgets[rowId(c)]) || 0), 0)
+  const overAllocated = allocated > takeHome.monthlyTakeHome
 
   return (
     <motion.div
@@ -173,7 +171,7 @@ function SettingsModal({ onClose }) {
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-10 border-4 border-sage-light/30"
+        className="bg-white rounded-[2rem] shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-10 border-4 border-sage-light/30"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-3xl font-extrabold text-text mb-8">Settings</h2>
@@ -209,30 +207,15 @@ function SettingsModal({ onClose }) {
             />
           </div>
 
-          {/* Category Budgets Section */}
+          {/* Category Editor */}
           <div className="pt-6 border-t-2 border-sage-light/30 mt-8">
-            <h3 className="text-xl font-extrabold text-text mb-4">Category Budgets</h3>
-
-            <div className="space-y-6">
-              <CategoryGroup
-                title="Needs"
-                categories={NEEDS_CATEGORIES}
-                budgets={localBudgets}
-                onBudgetChange={(key, value) => setLocalBudgets({ ...localBudgets, [key]: Number(value) || 0 })}
-              />
-              <CategoryGroup
-                title="Wants"
-                categories={WANTS_CATEGORIES}
-                budgets={localBudgets}
-                onBudgetChange={(key, value) => setLocalBudgets({ ...localBudgets, [key]: Number(value) || 0 })}
-              />
-              <CategoryGroup
-                title="Savings"
-                categories={SAVINGS_CATEGORIES}
-                budgets={localBudgets}
-                onBudgetChange={(key, value) => setLocalBudgets({ ...localBudgets, [key]: Number(value) || 0 })}
-              />
-            </div>
+            <CategoryEditor
+              categories={localCategories}
+              budgets={localBudgets}
+              expenseCounts={expenseCounts}
+              onCategoriesChange={setLocalCategories}
+              onBudgetChange={handleBudgetChange}
+            />
           </div>
 
           {/* Allocation Summary */}
@@ -241,11 +224,11 @@ function SettingsModal({ onClose }) {
               Monthly Take-Home: <span className="text-sage-dark font-extrabold text-xl">{formatCurrency(takeHome.monthlyTakeHome)}</span>
             </p>
             <p className="text-base font-bold text-text-light">
-              Total Allocated: <span className={`font-extrabold text-xl ${Object.values(localBudgets).reduce((sum, val) => sum + (Number(val) || 0), 0) > takeHome.monthlyTakeHome ? 'text-danger' : 'text-sage-dark'}`}>
-                {formatCurrency(Object.values(localBudgets).reduce((sum, val) => sum + (Number(val) || 0), 0))}
+              Total Allocated: <span className={`font-extrabold text-xl ${overAllocated ? 'text-danger' : 'text-sage-dark'}`}>
+                {formatCurrency(allocated)}
               </span>
             </p>
-            {Object.values(localBudgets).reduce((sum, val) => sum + (Number(val) || 0), 0) > takeHome.monthlyTakeHome && (
+            {overAllocated && (
               <p className="text-sm text-danger font-bold mt-2">⚠️ Total allocated exceeds monthly take-home</p>
             )}
           </div>

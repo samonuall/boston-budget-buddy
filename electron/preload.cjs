@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Expenses
   addExpense: (expense) => ipcRenderer.invoke('add-expense', expense),
   getExpenses: (month, year) => ipcRenderer.invoke('get-expenses', month, year),
+  countExpensesByCategory: () => ipcRenderer.invoke('count-expenses-by-category'),
   deleteExpense: (id) => ipcRenderer.invoke('delete-expense', id),
   updateExpense: (expense) => ipcRenderer.invoke('update-expense', expense),
 });
