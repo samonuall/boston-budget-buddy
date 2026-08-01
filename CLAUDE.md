@@ -67,11 +67,11 @@ excluded from `overBudgetCategories`. Uses a half-cent epsilon for float drift.
 PNG mascot rendered **in the page flow**, inside `BudgetOverview` below the
 "Left to spend this month" card — not a fixed overlay.
 
-- **Dale only ever says nice things.** Every pool in `DALE_QUOTES` is kind; there
-  is a test asserting no scolding vocabulary appears. Keep it that way.
-- Quotes are picked by time of day (morning / day / night) via `utils/dale.js`.
-  The clock is read **in the click handler**, not at render, so an app left open
-  overnight still greets you correctly.
+- **Dale only ever says nice things.** `DALE_QUOTES` is one flat pool and every
+  entry is kind; a test asserts no scolding vocabulary appears. Keep it that way.
+- Clicking him picks from that pool at random (`utils/dale.js`). He has no moods
+  and no sense of time, so keep quotes **time-agnostic** — a random pick can land
+  at any hour, and a test enforces this.
 - Hats (`DALE_HATS`) are emoji anchored to his head via `HAT_ANCHOR`, expressed
   as % of Dale's rendered size. Persisted in the `dale_hat` setting.
 - Drag the 🦴 onto him to feed him — hit-testing compares the pointer position
@@ -110,7 +110,7 @@ Custom `@theme` colors — use these, not arbitrary hex:
 | `src/hooks/useBudget.jsx` | Central state — start here for any logic changes |
 | `src/utils/constants.js` | Seed categories, defaults, Dale quotes + hats |
 | `src/utils/categories.js` | Category model, migration, status rule |
-| `src/utils/dale.js` | Time-of-day quote selection |
+| `src/utils/dale.js` | Random nice-quote selection |
 | `src/components/CategoryEditor.jsx` | Add/rename/delete categories in Settings |
 | `src/components/EmojiPicker.jsx` | Self-contained emoji picker (no external dep) |
 | `src/components/DaleZone.jsx` | Dale + hat rack + draggable treat |
@@ -131,8 +131,8 @@ Custom `@theme` colors — use these, not arbitrary hex:
 
 **Update tax year**: Edit brackets and deduction in `taxCalculator.js`.
 
-**Change Dale behavior**: Edit mood derivation in `useBudget.jsx` (`daleMood` logic),
-quotes in `constants.js` (`DALE_QUOTES`), animations in `Dale.jsx`.
+**Change Dale behavior**: quotes in `constants.js` (`DALE_QUOTES`), hats in
+`DALE_HATS`/`HAT_ANCHOR`, drag + feeding in `DaleZone.jsx`, animations in `Dale.jsx`.
 
 ## Known Gaps / Future Work
 

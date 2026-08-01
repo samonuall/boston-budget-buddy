@@ -77,43 +77,31 @@ export const DALE_TREAT_QUOTES = [
  * Dale is a good dog. He only ever says nice things — no scolding, no guilt,
  * no matter what the numbers look like. Keep it that way when adding quotes.
  *
- * Pools are picked by time of day (see utils/dale.js). `sleeping` is used when
- * nothing has been logged yet this month, whatever the hour.
+ * One flat pool, picked from at random on every click. Keep quotes
+ * time-agnostic: a random pick can land at any hour, so nothing here should
+ * assume it is morning or night.
  */
-export const DALE_QUOTES = {
-  morning: [
-    'Good morning! Fresh day, fresh bowl. 🌅',
-    'Morning, friend! I saved you a spot on the couch.',
-    'New day, clean slate. Let us go!',
-    "Coffee first, budgeting second. I don't judge. ☕",
-    'You woke up and chose to be responsible. Proud of you!',
-    'Early bird gets the treat! 🦴',
-    'Stretch, snack, spend wisely. That is my routine.',
-  ],
-  day: [
-    "You're doing great! 🐾",
-    'Saving is fetching! 🦴',
-    'Good human! Keep it up!',
-    'Woof! Every expense you log is a win.',
-    'Tail wags for you today!',
-    'Midday check-in? Very organized of you.',
-    'Tracking it is the hard part, and you did it!',
-    "However this month goes, I'm proud of you.",
-    'Sunbeam on the floor, money in the bank. Perfect.',
-  ],
-  night: [
-    'Winding down? Me too. 🌙',
-    "Money comes and goes. You're still the best human.",
-    "Whatever today cost, it's over now. Rest up.",
-    'Tomorrow is always a fresh bowl!',
-    "Good night! We'll figure the rest out together.",
-    'You made it through the day. That counts. ✨',
-    'Time for the big stretch and the little sigh.',
-  ],
-  sleeping: [
-    'Zzz... dreaming of treats... zzz',
-    '*curls up on your budget*',
-    'Zzz... 💤',
-    'Wake me when there is a snack.',
-  ],
-};
+export const DALE_QUOTES = [
+  "You're doing great! 🐾",
+  'Saving is fetching! 🦴',
+  'Good human! Keep it up!',
+  'Woof! Every expense you log is a win.',
+  'Tail wags for you today!',
+  'Tracking it is the hard part, and you did it!',
+  "However this month goes, I'm proud of you.",
+  "Money comes and goes. You're still the best human.",
+  'Tomorrow is always a fresh bowl!',
+  "We'll figure it out together — we always do.",
+  "Coffee first, budgeting second. I don't judge. ☕",
+  "You showed up. That's the whole trick.",
+  "Stretch, snack, spend wisely. That's my routine.",
+  'Clean slate whenever you want one.',
+  '*happy tail thumping*',
+  "You're doing better than you think.",
+  'Every little bit you set aside counts. 🦴',
+  'Budgets are just plans, and plans can change.',
+  "I'd share my treats with you. That's how much I like you.",
+  'Look at you, being all responsible!',
+  "No notes. You're a great human.",
+  '*flops over for belly rubs*',
+];

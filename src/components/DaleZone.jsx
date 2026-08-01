@@ -25,7 +25,7 @@ const within = (rect, p) =>
   !!rect && p.x >= rect.left && p.x <= rect.right && p.y >= rect.top && p.y <= rect.bottom;
 
 export default function DaleZone() {
-  const { daleMood, daleHat, updateDaleHat } = useBudget();
+  const { daleHat, updateDaleHat } = useBudget();
 
   const [quote, setQuote] = useState('');
   const [isEating, setIsEating] = useState(false);
@@ -69,7 +69,7 @@ export default function DaleZone() {
       return;
     }
     if (isEating) return;
-    setQuote((prev) => (prev ? '' : pickDaleQuote(daleMood)));
+    setQuote((prev) => (prev ? '' : pickDaleQuote()));
   };
 
   const trackDrag = (_event, info) => {

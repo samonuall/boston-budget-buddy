@@ -270,9 +270,6 @@ export function BudgetProvider({ children }) {
   const overBudgetCategories = categoryKeys.filter((k) => getCategoryStatus(k) === 'over');
   const warningCategories = categoryKeys.filter((k) => getCategoryStatus(k) === 'warning');
 
-  // Dale's mood drives his expression only — every quote pool is kind.
-  const daleMood = expenses.length === 0 ? 'sleeping' : 'happy';
-
   const value = {
     loading,
     grossSalary,
@@ -288,7 +285,6 @@ export function BudgetProvider({ children }) {
     totalBudget,
     totalSpent,
     remainingTotal,
-    daleMood,
     daleHat,
     updateDaleHat,
     overBudgetCategories,
