@@ -1,5 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { HAT_ANCHOR, DALE_HATS } from '../utils/constants';
+// Imported, not referenced as "/dale.png". Vite cannot rewrite a path inside a
+// JSX string literal, so an absolute one survives into the bundle and resolves
+// against the filesystem root under file:// — the packaged app showed no dog.
+// Importing routes it through the asset pipeline, which honours `base: './'`.
+import daleImage from '../assets/dale.png';
 
 // ---------- Speech bubble ----------
 function SpeechBubble({ text, onClose }) {
@@ -100,7 +105,7 @@ export default function Dale({
         }}
       >
         <img
-          src="/dale.png"
+          src={daleImage}
           alt="Dale the Dachshund"
           draggable={false}
           style={{ width: size, height: 'auto', display: 'block', pointerEvents: 'none' }}
